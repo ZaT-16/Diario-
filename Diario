@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Diario de Trading</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Diario Trading">
+<meta name="theme-color" content="#0a0a0b">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230a0a0b'/%3E%3Crect x='14' y='22' width='72' height='58' rx='8' fill='none' stroke='%23d9a441' stroke-width='4'/%3E%3Cline x1='14' y1='38' x2='86' y2='38' stroke='%23d9a441' stroke-width='4'/%3E%3Cpolyline points='24,66 38,52 48,60 62,44 76,50' fill='none' stroke='%2324d385' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230a0a0b'/%3E%3Crect x='14' y='22' width='72' height='58' rx='8' fill='none' stroke='%23d9a441' stroke-width='4'/%3E%3Cline x1='14' y1='38' x2='86' y2='38' stroke='%23d9a441' stroke-width='4'/%3E%3Cpolyline points='24,66 38,52 48,60 62,44 76,50' fill='none' stroke='%2324d385' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg: #0a0a0b;
+    --panel: #131315;
+    --panel-2: #1b1b1e;
+    --line: #2a2a2e;
+    --text: #eceae6;
+    --muted: #8b8b8f;
+    --green: #24d385;
+    --green-dim: rgba(36,211,133,0.12);
+    --red: #ff5c5c;
+    --red-dim: rgba(255,92,92,0.12);
+    --amber: #d9a441;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;}
+  .mono{ font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+
+  #app{ max-width: 480px; margin: 0 auto; padding: 18px 14px 90px; min-height: 100vh; }
+
+  header{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 18px; }
+  header h1{ font-size: 15px; font-weight: 600; letter-spacing: 0.2px; margin:0; color: var(--text); }
+  header .sub{ font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* Summary */
+  .summary{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .summary .card{ background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .summary .label{ font-size: 10.5px; color: var(--muted); text-transform: none; margin-bottom: 6px; }
+  .summary .value{ font-size: 21px; font-weight: 700; letter-spacing: -0.3px; }
+  .value.pos{ color: var(--green); }
+  .value.neg{ color: var(--red); }
+  .value.zero{ color: var(--text); }
+
+  /* Month nav */
+  .monthnav{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px; }
+  .monthnav button{ background:none; border:none; color: var(--text); font-size: 18px; padding: 6px 12px; cursor:pointer; }
+  .monthnav .m{ font-size: 15px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Calendar grid */
+  .weekdays{ display:grid; grid-template-columns: repeat(7,1fr); margin-bottom: 4px; }
+  .weekdays div{ text-align:center; font-size: 10px; color: var(--muted); padding: 6px 0; }
+  .weekdays div.dom{ color: #b06a5a; }
+
+  .grid{ display:grid; grid-template-columns: repeat(7,1fr); gap: 4px; }
+  .day{ position:relative; aspect-ratio: 1/1; border-radius: 8px; background: var(--panel);
+    border: 1px solid var(--line); padding: 5px 5px; cursor:pointer; overflow:hidden;
+    display:flex; flex-direction:column; justify-content:space-between; }
+  .day.other{ opacity: 0.28; pointer-events:none; }
+  .day.today{ border-color: var(--amber); }
+  .day .num{ font-size: 11px; color: var(--muted); font-weight: 600; }
+  .day.today .num{ color: var(--amber); }
+  .day.has-pos{ background: var(--green-dim); border-color: rgba(36,211,133,0.35); }
+  .day.has-neg{ background: var(--red-dim); border-color: rgba(255,92,92,0.35); }
+  .day .pnl{ font-size: 10.5px; font-weight: 700; text-align:right; line-height:1.1; word-break: break-all; }
+  .day .pnl.pos{ color: var(--green); }
+  .day .pnl.neg{ color: var(--red); }
+  .day .dot{ position:absolute; top:4px; right:4px; width:5px; height:5px; border-radius:50%; background: var(--muted); }
+
+  /* Modal */
+  .overlay{ position:fixed; inset:0; background: rgba(0,0,0,0.6); display:none; align-items:flex-end; z-index: 50; }
+  .overlay.open{ display:flex; }
+  .sheet{ background: var(--panel-2); width:100%; max-width:480px; margin:0 auto; border-radius: 16px 16px 0 0;
+    padding: 18px 16px 24px; border-top: 1px solid var(--line); max-height: 85vh; overflow-y:auto; }
+  .sheet h2{ font-size: 14px; margin: 0 0 2px; }
+  .sheet .datestr{ font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+
+  .entries-list{ display:flex; flex-direction:column; gap:8px; margin-bottom: 16px; }
+  .entry-row{ display:flex; align-items:center; justify-content:space-between; background: var(--panel);
+    border:1px solid var(--line); border-radius: 8px; padding: 9px 11px; }
+  .entry-row .left{ display:flex; flex-direction:column; gap:2px; }
+  .entry-row .amt{ font-size: 14px; font-weight:700; }
+  .entry-row .amt.pos{ color: var(--green); }
+  .entry-row .amt.neg{ color: var(--red); }
+  .entry-row .note{ font-size: 10.5px; color: var(--muted); }
+  .entry-row .del{ background:none; border:none; color: var(--muted); font-size: 16px; cursor:pointer; padding: 4px 8px; }
+  .entry-row .del:hover{ color: var(--red); }
+  .day-total{ display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted);
+    padding: 4px 2px 14px; border-bottom: 1px solid var(--line); margin-bottom:14px; }
+  .day-total b{ font-size:14px; }
+
+  .field{ margin-bottom: 12px; }
+  .field label{ display:block; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .field input{ width:100%; background: var(--panel); border:1px solid var(--line); border-radius: 8px;
+    padding: 11px 12px; color: var(--text); font-size: 14px; }
+  .field input:focus{ outline:none; border-color: var(--amber); }
+
+  .toggle{ display:flex; gap:8px; margin-bottom: 12px; }
+  .toggle button{ flex:1; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel);
+    color: var(--muted); font-size: 12px; font-weight:700; cursor:pointer; letter-spacing:0.5px; }
+  .toggle button.sl.active{ background: var(--red-dim); border-color: var(--red); color: var(--red); }
+  .toggle button.tp.active{ background: var(--green-dim); border-color: var(--green); color: var(--green); }
+
+  .addbtn{ width:100%; padding: 13px; border-radius: 9px; border:none; background: var(--amber); color:#1a1200;
+    font-weight:700; font-size: 13px; cursor:pointer; }
+  .addbtn:disabled{ opacity:0.4; }
+  .closebtn{ width:100%; padding: 11px; border-radius: 9px; border:1px solid var(--line); background:none;
+    color: var(--muted); font-size: 12px; margin-top: 10px; cursor:pointer; }
+
+  .empty{ text-align:center; color: var(--muted); font-size: 12px; padding: 10px 0 4px; }
+  .loading{ text-align:center; color: var(--muted); font-size: 12px; padding: 40px 0; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <h1>Diario de Trading</h1>
+      <div class="sub">SMC / ICT — registro de operaciones</div>
+    </div>
+  </header>
+
+  <div class="summary">
+    <div class="card">
+      <div class="label">Total general</div>
+      <div class="value zero mono" id="overallTotal">···</div>
+    </div>
+    <div class="card">
+      <div class="label" id="monthLabel">Total del mes</div>
+      <div class="value zero mono" id="monthTotal">···</div>
+    </div>
+  </div>
+
+  <div class="monthnav">
+    <button id="prevBtn">‹</button>
+    <div class="m" id="monthYear">···</div>
+    <button id="nextBtn">›</button>
+  </div>
+
+  <div class="weekdays">
+    <div class="dom">DOM</div><div>LUN</div><div>MAR</div><div>MIÉ</div><div>JUE</div><div>VIE</div><div>SÁB</div>
+  </div>
+
+  <div class="grid" id="grid">
+    <div class="loading">Cargando diario...</div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h2 id="sheetTitle">Operaciones</h2>
+    <div class="datestr" id="sheetDate"></div>
+
+    <div class="day-total">
+      <span>Neto del día</span>
+      <b class="mono" id="dayTotal">$0</b>
+    </div>
+
+    <div class="entries-list" id="entriesList"></div>
+
+    <div class="toggle">
+      <button class="sl" id="btnSL">SL (pérdida)</button>
+      <button class="tp" id="btnTP">TP (ganancia)</button>
+    </div>
+
+    <div class="field">
+      <label id="amountLabel">Monto ($)</label>
+      <input type="number" id="amountInput" inputmode="decimal" placeholder="Ej. 124" min="0" step="any">
+    </div>
+
+    <div class="field">
+      <label>Par / nota (opcional)</label>
+      <input type="text" id="noteInput" placeholder="Ej. EURUSD, ruptura de liquidez">
+    </div>
+
+    <button class="addbtn" id="addBtn">Añadir</button>
+    <button class="closebtn" id="closeBtn">Cerrar</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'journal-trades';
+  const MONTHS = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+  const MONTHS_FULL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const DAYNAMES = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+
+  let trades = {};      // { "YYYY-MM-DD": [ {id, amount, note} ... ] }
+  let storageOk = true;
+  let today = new Date();
+  let viewYear = today.getFullYear();
+  let viewMonth = today.getMonth(); // 0-indexed
+  let selectedDate = null;
+  let pendingType = 'sl';
+
+  const fmtMoney = (n) => {
+    const sign = n > 0 ? '+' : (n < 0 ? '−' : '');
+    const abs = Math.abs(n);
+    const str = abs.toLocaleString('es-ES', {minimumFractionDigits: abs % 1 === 0 ? 0 : 2, maximumFractionDigits: 2});
+    return sign + '$' + str;
+  };
+  const dateKey = (y,m,d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const dayTotalOf = (key) => (trades[key]||[]).reduce((s,e)=>s+e.amount,0);
+
+  async function loadTrades(){
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      trades = res && res.value ? JSON.parse(res.value) : {};
+    }catch(e){
+      trades = {};
+    }
+  }
+
+  async function saveTrades(){
+    try{
+      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(trades), false);
+      if(!result){ storageOk = false; }
+    }catch(e){
+      storageOk = false;
+    }
+  }
+
+  function overallTotal(){
+    let t = 0;
+    for(const k in trades){ t += dayTotalOf(k); }
+    return t;
+  }
+  function monthTotal(y,m){
+    let t = 0;
+    for(const k in trades){
+      const [ky,km] = k.split('-').map(Number);
+      if(ky===y && km===m+1) t += dayTotalOf(k);
+    }
+    return t;
+  }
+
+  function setValueEl(el, val){
+    el.textContent = fmtMoney(val);
+    el.classList.remove('pos','neg','zero');
+    el.classList.add(val > 0 ? 'pos' : (val < 0 ? 'neg' : 'zero'));
+  }
+
+  function renderSummary(){
+    setValueEl(document.getElementById('overallTotal'), overallTotal());
+    setValueEl(document.getElementById('monthTotal'), monthTotal(viewYear, viewMonth));
+    document.getElementById('monthLabel').textContent = `Total de ${MONTHS_FULL[viewMonth]}`;
+  }
+
+  function renderCalendar(){
+    document.getElementById('monthYear').textContent = `${MONTHS[viewMonth]} ${viewYear}`;
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+
+    const firstOfMonth = new Date(viewYear, viewMonth, 1);
+    const startOffset = firstOfMonth.getDay(); // 0=Sun
+    const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+    const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+    const cells = [];
+    for(let i=0;i<startOffset;i++){
+      cells.push({num: daysInPrevMonth - startOffset + 1 + i, other:true});
+    }
+    for(let d=1; d<=daysInMonth; d++){
+      cells.push({num: d, other:false});
+    }
+    while(cells.length % 7 !== 0){
+      cells.push({num: cells.length - startOffset - daysInMonth + 1, other:true});
+    }
+
+    const isToday = (d) => d===today.getDate() && viewMonth===today.getMonth() && viewYear===today.getFullYear();
+
+    cells.forEach(c=>{
+      const div = document.createElement('div');
+      div.className = 'day' + (c.other ? ' other' : '') + (!c.other && isToday(c.num) ? ' today' : '');
+
+      if(!c.other){
+        const key = dateKey(viewYear, viewMonth, c.num);
+        const total = dayTotalOf(key);
+        if(total > 0) div.classList.add('has-pos');
+        if(total < 0) div.classList.add('has-neg');
+
+        div.innerHTML = `<div class="num">${c.num}</div>` +
+          (total !== 0 ? `<div class="pnl mono ${total>0?'pos':'neg'}">${fmtMoney(total)}</div>` : '');
+
+        div.addEventListener('click', () => openSheet(viewYear, viewMonth, c.num));
+      } else {
+        div.innerHTML = `<div class="num">${c.num}</div>`;
+      }
+      grid.appendChild(div);
+    });
+  }
+
+  function render(){
+    renderSummary();
+    renderCalendar();
+  }
+
+  // ---- Sheet / modal ----
+  const overlay = document.getElementById('overlay');
+  const entriesList = document.getElementById('entriesList');
+  const btnSL = document.getElementById('btnSL');
+  const btnTP = document.getElementById('btnTP');
+  const amountInput = document.getElementById('amountInput');
+  const noteInput = document.getElementById('noteInput');
+  const amountLabel = document.getElementById('amountLabel');
+
+  function setPendingType(type){
+    pendingType = type;
+    btnSL.classList.toggle('active', type==='sl');
+    btnTP.classList.toggle('active', type==='tp');
+    amountLabel.textContent = type==='sl' ? 'Monto de la pérdida ($)' : 'Monto de la ganancia ($)';
+  }
+
+  function openSheet(y,m,d){
+    selectedDate = dateKey(y,m,d);
+    const dateObj = new Date(y,m,d);
+    document.getElementById('sheetDate').textContent =
+      `${DAYNAMES[dateObj.getDay()]}, ${d} de ${MONTHS_FULL[m]} ${y}`;
+    setPendingType('sl');
+    amountInput.value = '';
+    noteInput.value = '';
+    renderEntries();
+    overlay.classList.add('open');
+  }
+
+  function closeSheet(){
+    overlay.classList.remove('open');
+    selectedDate = null;
+  }
+
+  function renderEntries(){
+    const list = trades[selectedDate] || [];
+    setValueEl(document.getElementById('dayTotal'), dayTotalOf(selectedDate));
+
+    if(list.length === 0){
+      entriesList.innerHTML = '<div class="empty">Sin operaciones registradas este día.</div>';
+      return;
+    }
+    entriesList.innerHTML = '';
+    list.forEach(entry=>{
+      const row = document.createElement('div');
+      row.className = 'entry-row';
+      row.innerHTML = `
+        <div class="left">
+          <div class="amt mono ${entry.amount>0?'pos':'neg'}">${entry.amount>0?'TP':'SL'} ${fmtMoney(entry.amount)}</div>
+          ${entry.note ? `<div class="note">${escapeHtml(entry.note)}</div>` : ''}
+        </div>
+        <button class="del" data-id="${entry.id}">✕</button>`;
+      entriesList.appendChild(row);
+    });
+    entriesList.querySelectorAll('.del').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.getAttribute('data-id');
+        trades[selectedDate] = (trades[selectedDate]||[]).filter(e=>e.id!==id);
+        if(trades[selectedDate].length===0) delete trades[selectedDate];
+        await saveTrades();
+        renderEntries();
+        render();
+      });
+    });
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.getElementById('addBtn').addEventListener('click', async ()=>{
+    const raw = parseFloat(amountInput.value);
+    if(isNaN(raw) || raw <= 0) return;
+    const amount = pendingType === 'sl' ? -Math.abs(raw) : Math.abs(raw);
+    const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), amount, note: noteInput.value.trim() };
+    if(!trades[selectedDate]) trades[selectedDate] = [];
+    trades[selectedDate].push(entry);
+    await saveTrades();
+    amountInput.value = '';
+    noteInput.value = '';
+    renderEntries();
+    render();
+  });
+
+  btnSL.addEventListener('click', ()=>setPendingType('sl'));
+  btnTP.addEventListener('click', ()=>setPendingType('tp'));
+  document.getElementById('closeBtn').addEventListener('click', closeSheet);
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeSheet(); });
+
+  document.getElementById('prevBtn').addEventListener('click', ()=>{
+    viewMonth--; if(viewMonth<0){ viewMonth=11; viewYear--; }
+    render();
+  });
+  document.getElementById('nextBtn').addEventListener('click', ()=>{
+    viewMonth++; if(viewMonth>11){ viewMonth=0; viewYear++; }
+    render();
+  });
+
+  (async function init(){
+    await loadTrades();
+    render();
+  })();
+})();
+</script>
+</body>
+</html>
